@@ -15,6 +15,17 @@ Build a new empty C++ project. To do so, go to macOS -> Command Line Tool -> lan
 
 In the main.cpp file, paste the code from the main.cpp file in this repository.
 
+
+
+**C++ version 17 or higher is required.**
+
+on Mac: 
+1.  open terminal
+2. type: 
+```clang++ -std=c++17 main.cpp -o output```
+3. than type: 
+```./output```
+
 # How to use it
 You can slide a folder or file to your terminal and it will automatically copy the path to the file or folder.
 Than press enter to run the code. 
