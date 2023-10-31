@@ -3,12 +3,13 @@
 #include <filesystem>
 #include <chrono>
 #include <ctime>
+#include <set> // Include set for line tracking
 
 using namespace std;
 namespace fs = std::filesystem;
 
 bool shouldIgnoreFile(const string &filename) {
-    return filename == "node_modules" || filename == ".DS_Store";
+    return filename == "node_modules" || filename == ".DS_Store" || filename == "UNIT" || filename == "package-lock.json" || filename == "tsconfig.json";
 }
 
 void displayFileContent(const string &path) {
@@ -26,20 +27,28 @@ void displayFileContent(const string &path) {
     }
 }
 
-void processDirectoryForSaving(const string &directoryPath, ofstream &outputFile);
-
-void displayFileContentToStream(const string &path, ofstream &outputFile) {
-    ifstream file(path);
-    if (file.is_open()) {
-        string line;
-        outputFile << path << ":\n";
-        while (getline(file, line)) {
-            outputFile << line << '\n';
+void processDirectoryForSaving(const string &directoryPath, ofstream &outputFile, set<string> &encounteredLines) {
+    for (const auto &entry : fs::directory_iterator(directoryPath)) {
+        string filename = entry.path().filename();
+        if (entry.is_regular_file() && !shouldIgnoreFile(filename)) {
+            ifstream file(entry.path());
+            if (file.is_open()) {
+                string line;
+                while (getline(file, line)) {
+                    // Check for duplicates
+                    if (encounteredLines.find(line) == encounteredLines.end()) {
+                        outputFile << line << '\n';
+                        encounteredLines.insert(line);
+                    }
+                }
+                file.close();
+            } else {
+                outputFile << "Unable to open file: " << entry.path() << '\n';
+            }
+        } else if (entry.is_directory() && filename != "node_modules" && filename != "UNIT") {
+            outputFile << "Directory: " << entry.path() << "\n";
+            processDirectoryForSaving(entry.path(), outputFile, encounteredLines); // Recursively explore directories
         }
-        outputFile << "----------------------------------------\n";
-        file.close();
-    } else {
-        outputFile << "Unable to open file: " << path << '\n';
     }
 }
 
@@ -59,23 +68,12 @@ void saveContentToFile(const string &directoryPath) {
     ofstream outputFile(filePath);
     if (outputFile.is_open()) {
         outputFile << "Directory: " << directoryPath << "\n";
-        processDirectoryForSaving(directoryPath, outputFile);
+        set<string> encounteredLines; // Set to track encountered lines
+        processDirectoryForSaving(directoryPath, outputFile, encounteredLines);
         outputFile.close();
         cout << "The file " << filename << " has been saved in the directory: " << directoryPath << endl;
     } else {
         cout << "Unable to create/open the file for writing." << endl;
-    }
-}
-
-void processDirectoryForSaving(const string &directoryPath, ofstream &outputFile) {
-    for (const auto &entry : fs::directory_iterator(directoryPath)) {
-        string filename = entry.path().filename();
-        if (entry.is_regular_file() && !shouldIgnoreFile(filename)) {
-            displayFileContentToStream(entry.path(), outputFile);
-        } else if (entry.is_directory() && filename != "node_modules" && filename != "UNIT") {
-            outputFile << "Directory: " << entry.path() << "\n";
-            processDirectoryForSaving(entry.path(), outputFile); // Recursively explore directories
-        }
     }
 }
 
